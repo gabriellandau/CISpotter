@@ -9,8 +9,6 @@ static ZwQueryInformationProcess_t gZwQueryInformationProcess = NULL;
 DECLARE_CONST_UNICODE_STRING(gzuZwQuerySection, L"ZwQuerySection");
 static ZwQuerySection_t gZwQuerySection = NULL;
 
-SE_IMAGE_SIGNATURE_TYPE
-
 void MyLoadImageNotifyRoutine(
     PUNICODE_STRING FullImageName,
     HANDLE ProcessId,
@@ -29,7 +27,8 @@ void MyLoadImageNotifyRoutine(
     UNREFERENCED_PARAMETER(ProcessId);
 
     // Sanity check
-    if (!ImageInfo || 
+    if (!ProcessId ||
+        !ImageInfo ||
         !ImageInfo->ImageBase ||
         !ImageInfo->ExtendedInfoPresent)
     {
@@ -37,7 +36,7 @@ void MyLoadImageNotifyRoutine(
     }
 
     // Exclude NTDLL, which is missing signer information
-    if (ImageInfo->ImageBase == gNtdllBaseAddress)
+    if (gNtdllBaseAddress == ImageInfo->ImageBase)
     {
         goto Cleanup;
     }
@@ -50,6 +49,7 @@ void MyLoadImageNotifyRoutine(
         goto Cleanup;
     }
 
+    // HANDLE => PEPROCESS
     ntStatus = ObReferenceObjectByHandle(hProcess, 0, *PsProcessType, KernelMode, (PVOID*)&pProcess, NULL);
     if (!NT_SUCCESS(ntStatus))
     {
@@ -57,7 +57,7 @@ void MyLoadImageNotifyRoutine(
     }
 
     // Exclude the main EXE, which is missing signer information
-    if (ImageInfo->ImageBase == PsGetProcessSectionBaseAddress(pProcess))
+    if (PsGetProcessSectionBaseAddress(pProcess) == ImageInfo->ImageBase)
     {
         goto Cleanup;
     }
@@ -92,9 +92,14 @@ void MyLoadImageNotifyRoutine(
     if ((0 == ImageInfo->ImageSignatureType) ||
         (ImageInfo->ImageSignatureLevel < SE_SIGNING_LEVEL_ANTIMALWARE))
     {
-        // Prove we stopped the CI violation by termination
-        // This can leak memory per MSDN, but this is a POC
-        (void)ZwTerminateProcess(hProcess, STATUS_INVALID_SIGNATURE);
+        // This callback can sometimes execute with special APCs disabled
+        // ZwTerminateProcess uses a special APC.  Calling it can deadlock in such cases.
+        if (!KeAreAllApcsDisabled())
+        {
+            // Prove we stopped the CI violation by termination
+            // This can leak memory per MSDN, but this is a POC
+            (void)ZwTerminateProcess(hProcess, STATUS_INVALID_SIGNATURE);
+        }
     }
 
 Cleanup:
