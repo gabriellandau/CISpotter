@@ -186,18 +186,18 @@ EXTERN_C NTSTATUS DriverEntry(
         }
     }
 
+    ntStatus = GetNtdllBaseAddress();
+    if (!NT_SUCCESS(ntStatus))
+    {
+        goto Cleanup;
+    }
+
     ntStatus = PsSetLoadImageNotifyRoutineEx(MyLoadImageNotifyRoutine, 0);
     if (!NT_SUCCESS(ntStatus))
     {
         goto Cleanup;
     }
     bCallbackRegistered = TRUE;
-
-    ntStatus = GetNtdllBaseAddress();
-    if (!NT_SUCCESS(ntStatus))
-    {
-        goto Cleanup;
-    }
 
 Cleanup:
 
