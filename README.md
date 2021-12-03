@@ -1,6 +1,6 @@
 # Code Integrity Violation Spotter
 
-See [this blog post](https://www.elastic.co/blog/detect-block-unknown-knowndlls-windows-acl-hardening-attacks-cache-poisoning-privilege-escalation) for more information.
+See [this blog post](https://www.elastic.co/blog/detect-block-unknown-knowndlls-windows-acl-hardening-attacks-cache-poisoning-escalation) for more information.
 
 Windows normally performs Protected Process Light code integrity checks during `NtCreateSection(SEC_IMAGE)`.  
 CI Spotter adds similar checks during `NtMapViewOfSection`, preventing CI bypasses through mechanisms such as [KnownDlls cache poisoning](https://www.elastic.co/blog/protecting-windows-protected-processes).
